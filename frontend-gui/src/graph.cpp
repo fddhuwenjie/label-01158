@@ -2,6 +2,7 @@
 #include <queue>
 #include <algorithm>
 #include <set>
+#include <cmath>
 
 void CampusGraph::addSpot(const Spot& spot) {
     spots_.push_back(spot);
@@ -80,6 +81,77 @@ PathResult CampusGraph::dijkstra(int startId, int endId) const {
     
     result.found = true;
     result.totalDistance = dist[endId];
+    
+    int current = endId;
+    while (current != -1) {
+        result.path.push_back(current);
+        current = prev[current];
+    }
+    std::reverse(result.path.begin(), result.path.end());
+    
+    return result;
+}
+
+PathResult CampusGraph::astar(int startId, int endId) const {
+    PathResult result;
+    result.found = false;
+    result.totalDistance = 0;
+    
+    if (startId < 0 || startId >= static_cast<int>(adj_.size()) ||
+        endId < 0 || endId >= static_cast<int>(adj_.size())) {
+        return result;
+    }
+    
+    const Spot* startSpot = getSpotById(startId);
+    const Spot* endSpot = getSpotById(endId);
+    if (!startSpot || !endSpot) {
+        return result;
+    }
+    
+    const double INF = std::numeric_limits<double>::infinity();
+    std::vector<double> gScore(adj_.size(), INF);
+    std::vector<double> fScore(adj_.size(), INF);
+    std::vector<int> prev(adj_.size(), -1);
+    
+    auto heuristic = [&](int u, int v) -> double {
+        const Spot* spotU = getSpotById(u);
+        const Spot* spotV = getSpotById(v);
+        if (!spotU || !spotV) return 0;
+        double dx = spotU->x - spotV->x;
+        double dy = spotU->y - spotV->y;
+        return std::sqrt(dx * dx + dy * dy);
+    };
+    
+    std::priority_queue<std::pair<double, int>,
+                        std::vector<std::pair<double, int>>,
+                        std::greater<std::pair<double, int>>> pq;
+    
+    gScore[startId] = 0;
+    fScore[startId] = heuristic(startId, endId);
+    pq.push({fScore[startId], startId});
+    
+    while (!pq.empty()) {
+        auto [f, u] = pq.top();
+        pq.pop();
+        
+        if (u == endId) break;
+        if (f > fScore[u]) continue;
+        
+        for (const auto& [v, w] : adj_[u]) {
+            double tentativeG = gScore[u] + w;
+            if (tentativeG < gScore[v]) {
+                prev[v] = u;
+                gScore[v] = tentativeG;
+                fScore[v] = gScore[v] + heuristic(v, endId);
+                pq.push({fScore[v], v});
+            }
+        }
+    }
+    
+    if (gScore[endId] == INF) return result;
+    
+    result.found = true;
+    result.totalDistance = gScore[endId];
     
     int current = endId;
     while (current != -1) {
