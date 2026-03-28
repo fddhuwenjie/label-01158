@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <limits>
+#include <cmath>
 
 // 景点信息结构
 struct Spot {
@@ -27,6 +28,8 @@ struct PathResult {
     std::vector<int> path;
     double totalDistance;
     bool found;
+    std::string algorithmName;
+    long long elapsedMs;
 };
 
 class CampusGraph {
@@ -42,6 +45,7 @@ public:
     const Spot* getSpotById(int id) const;
     const Spot* getSpotByCode(const std::string& code) const;
     PathResult dijkstra(int startId, int endId) const;
+    PathResult astar(int startId, int endId) const;
     PathResult multiSpotPath(const std::vector<int>& spotIds) const;
     std::vector<Edge> getEdges() const;
     size_t spotCount() const { return spots_.size(); }

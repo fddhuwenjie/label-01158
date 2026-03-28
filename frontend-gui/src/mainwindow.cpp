@@ -9,6 +9,7 @@
 #include <QMessageBox>
 #include <QTabWidget>
 #include <QGridLayout>
+#include <QElapsedTimer>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowTitle("安徽理工大学校园导航系统");
@@ -207,7 +208,14 @@ void MainWindow::setupUI() {
     }
     pathLayout->addWidget(endLabel);
     pathLayout->addWidget(endCombo_);
-    
+
+    QLabel *algorithmLabel = new QLabel("算法：");
+    algorithmCombo_ = new QComboBox;
+    algorithmCombo_->addItem("Dijkstra", 0);
+    algorithmCombo_->addItem("A*", 1);
+    pathLayout->addWidget(algorithmLabel);
+    pathLayout->addWidget(algorithmCombo_);
+
     findPathBtn_ = new QPushButton("🔍 查询最短路径");
     pathLayout->addWidget(findPathBtn_);
     
@@ -379,6 +387,7 @@ void MainWindow::onSwapPoints() {
 void MainWindow::onFindPath() {
     int startId = startCombo_->currentData().toInt();
     int endId = endCombo_->currentData().toInt();
+    int algorithmIndex = algorithmCombo_->currentData().toInt();
     
     if (startId < 0 || endId < 0) {
         showMessage("提示", "请选择起点和终点", true);
@@ -390,7 +399,19 @@ void MainWindow::onFindPath() {
         return;
     }
     
-    PathResult result = graph_.dijkstra(startId, endId);
+    PathResult result;
+    QElapsedTimer timer;
+    timer.start();
+    
+    if (algorithmIndex == 0) {
+        result = graph_.dijkstra(startId, endId);
+        result.algorithmName = "Dijkstra";
+    } else {
+        result = graph_.astar(startId, endId);
+        result.algorithmName = "A*";
+    }
+    
+    result.elapsedMs = timer.elapsed();
     showPathResult(result);
 }
 
@@ -407,7 +428,13 @@ void MainWindow::onFindMultiPath() {
         return;
     }
     
+    QElapsedTimer timer;
+    timer.start();
+    
     PathResult result = graph_.multiSpotPath(selectedIds);
+    
+    result.algorithmName = "Dijkstra (多点)";
+    result.elapsedMs = timer.elapsed();
     showPathResult(result);
 }
 
@@ -442,7 +469,13 @@ void MainWindow::showPathResult(const PathResult &result) {
         "<div style='color: #60a5fa; margin: 8px 0;'>%1</div>"
         "<div style='color: #d1d5db;'><b>总距离：</b>"
         "<span style='color: #10b981; font-size: 16px;'>%2 米</span></div>"
-    ).arg(pathNames.join(" → ")).arg(result.totalDistance);
+        "<div style='color: #d1d5db; margin-top: 8px;'><b>使用算法：</b>"
+        "<span style='color: #f59e0b;'>%3</span></div>"
+        "<div style='color: #d1d5db;'><b>耗时：</b>"
+        "<span style='color: #8b5cf6;'>%4 毫秒</span></div>"
+    ).arg(pathNames.join(" → ")).arg(result.totalDistance)
+     .arg(QString::fromStdString(result.algorithmName))
+     .arg(result.elapsedMs);
     
     pathResultText_->setHtml(html);
     mapWidget_->setCurrentPath(result.path);

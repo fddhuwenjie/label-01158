@@ -47,6 +47,7 @@ private:
     // 右侧面板
     QComboBox *startCombo_;
     QComboBox *endCombo_;
+    QComboBox *algorithmCombo_;
     QPushButton *swapBtn_;
     QPushButton *findPathBtn_;
     QTextEdit *pathResultText_;
