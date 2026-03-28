@@ -33,7 +33,7 @@ private:
     void setupUI();
     void loadData();
     void updateSpotInfo(int spotId);
-    void showPathResult(const PathResult &result);
+    void showPathResult(const PathResult &result, const QString &algorithmName, qint64 elapsedMs);
     void showMessage(const QString &title, const QString &message, bool isError = false);
 
     CampusGraph graph_;
@@ -47,6 +47,7 @@ private:
     // 右侧面板
     QComboBox *startCombo_;
     QComboBox *endCombo_;
+    QComboBox *algorithmCombo_;
     QPushButton *swapBtn_;
     QPushButton *findPathBtn_;
     QTextEdit *pathResultText_;

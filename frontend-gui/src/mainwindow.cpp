@@ -9,6 +9,7 @@
 #include <QMessageBox>
 #include <QTabWidget>
 #include <QGridLayout>
+#include <QElapsedTimer>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowTitle("安徽理工大学校园导航系统");
@@ -208,6 +209,13 @@ void MainWindow::setupUI() {
     pathLayout->addWidget(endLabel);
     pathLayout->addWidget(endCombo_);
     
+    QLabel *algorithmLabel = new QLabel("算法：");
+    algorithmCombo_ = new QComboBox;
+    algorithmCombo_->addItem("Dijkstra", 0);
+    algorithmCombo_->addItem("A*", 1);
+    pathLayout->addWidget(algorithmLabel);
+    pathLayout->addWidget(algorithmCombo_);
+    
     findPathBtn_ = new QPushButton("🔍 查询最短路径");
     pathLayout->addWidget(findPathBtn_);
     
@@ -390,8 +398,21 @@ void MainWindow::onFindPath() {
         return;
     }
     
-    PathResult result = graph_.dijkstra(startId, endId);
-    showPathResult(result);
+    int algorithmIndex = algorithmCombo_->currentData().toInt();
+    QString algorithmName = algorithmCombo_->currentText();
+    
+    QElapsedTimer timer;
+    timer.start();
+    
+    PathResult result;
+    if (algorithmIndex == 0) {
+        result = graph_.dijkstra(startId, endId);
+    } else {
+        result = graph_.astar(startId, endId);
+    }
+    
+    qint64 elapsedMs = timer.elapsed();
+    showPathResult(result, algorithmName, elapsedMs);
 }
 
 void MainWindow::onFindMultiPath() {
@@ -408,7 +429,7 @@ void MainWindow::onFindMultiPath() {
     }
     
     PathResult result = graph_.multiSpotPath(selectedIds);
-    showPathResult(result);
+    showPathResult(result, "Dijkstra", 0);
 }
 
 void MainWindow::onCheckboxToggled(bool checked) {
@@ -420,7 +441,7 @@ void MainWindow::onCheckboxToggled(bool checked) {
     selectedCountLabel_->setText(QString("已选择 %1 个景点").arg(count));
 }
 
-void MainWindow::showPathResult(const PathResult &result) {
+void MainWindow::showPathResult(const PathResult &result, const QString &algorithmName, qint64 elapsedMs) {
     if (!result.found) {
         pathResultText_->setHtml("<span style='color: #ef4444;'>❌ 未找到可行路径</span>");
         mapWidget_->clearPath();
@@ -438,11 +459,13 @@ void MainWindow::showPathResult(const PathResult &result) {
     
     QString html = QString(
         "<div style='color: #22c55e; margin-bottom: 10px;'>✅ 路径查询成功</div>"
-        "<div style='color: #d1d5db;'><b>路径：</b></div>"
-        "<div style='color: #60a5fa; margin: 8px 0;'>%1</div>"
+        "<div style='color: #d1d5db;'><b>算法：</b><span style='color: #60a5fa;'>%1</span></div>"
+        "<div style='color: #d1d5db;'><b>耗时：</b><span style='color: #10b981;'>%2 毫秒</span></div>"
+        "<div style='color: #d1d5db; margin-top: 8px;'><b>路径：</b></div>"
+        "<div style='color: #60a5fa; margin: 8px 0;'>%3</div>"
         "<div style='color: #d1d5db;'><b>总距离：</b>"
-        "<span style='color: #10b981; font-size: 16px;'>%2 米</span></div>"
-    ).arg(pathNames.join(" → ")).arg(result.totalDistance);
+        "<span style='color: #10b981; font-size: 16px;'>%4 米</span></div>"
+    ).arg(algorithmName).arg(elapsedMs).arg(pathNames.join(" → ")).arg(result.totalDistance);
     
     pathResultText_->setHtml(html);
     mapWidget_->setCurrentPath(result.path);
