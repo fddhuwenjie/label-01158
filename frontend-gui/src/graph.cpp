@@ -43,6 +43,8 @@ PathResult CampusGraph::dijkstra(int startId, int endId) const {
     PathResult result;
     result.found = false;
     result.totalDistance = 0;
+    result.algorithmName = "";
+    result.elapsedMs = 0;
     
     if (startId < 0 || startId >= static_cast<int>(adj_.size()) ||
         endId < 0 || endId >= static_cast<int>(adj_.size())) {
@@ -80,6 +82,82 @@ PathResult CampusGraph::dijkstra(int startId, int endId) const {
     
     result.found = true;
     result.totalDistance = dist[endId];
+    
+    int current = endId;
+    while (current != -1) {
+        result.path.push_back(current);
+        current = prev[current];
+    }
+    std::reverse(result.path.begin(), result.path.end());
+    
+    return result;
+}
+
+PathResult CampusGraph::astar(int startId, int endId) const {
+    PathResult result;
+    result.found = false;
+    result.totalDistance = 0;
+    
+    if (startId < 0 || startId >= static_cast<int>(adj_.size()) ||
+        endId < 0 || endId >= static_cast<int>(adj_.size())) {
+        return result;
+    }
+    
+    const Spot* startSpot = getSpotById(startId);
+    const Spot* endSpot = getSpotById(endId);
+    if (!startSpot || !endSpot) {
+        return result;
+    }
+    
+    const double INF = std::numeric_limits<double>::infinity();
+    std::vector<double> gScore(adj_.size(), INF);  // 从起点到当前节点的实际距离
+    std::vector<int> prev(adj_.size(), -1);
+    
+    // 优先队列，存储 (f_score, 节点ID)，f = g + h
+    std::priority_queue<std::pair<double, int>,
+                        std::vector<std::pair<double, int>>,
+                        std::greater<std::pair<double, int>>> pq;
+    
+    gScore[startId] = 0;
+    double hScore = std::hypot(startSpot->x - endSpot->x, startSpot->y - endSpot->y);
+    pq.push({hScore, startId});  // f = g + h = 0 + h
+    
+    while (!pq.empty()) {
+        auto [currentF, u] = pq.top();
+        pq.pop();
+        
+        if (u == endId) break;
+        
+        // 如果当前 f_score 比记录的大，说明已经有更优路径了
+        // 因为 f = g + h，而 g[u] 是最小的已知实际距离
+        // 所以如果 currentF > g[u] + h(u)，说明这是一个过期的节点
+        const Spot* currentSpot = getSpotById(u);
+        if (!currentSpot) continue;
+        
+        double currentH = std::hypot(currentSpot->x - endSpot->x, currentSpot->y - endSpot->y);
+        if (currentF > gScore[u] + currentH) continue;
+        
+        for (const auto& [v, w] : adj_[u]) {
+            double tentativeG = gScore[u] + w;
+            
+            if (tentativeG < gScore[v]) {
+                gScore[v] = tentativeG;
+                prev[v] = u;
+                
+                const Spot* currentSpot = getSpotById(v);
+                if (currentSpot) {
+                    hScore = std::hypot(currentSpot->x - endSpot->x, currentSpot->y - endSpot->y);
+                    double fScore = tentativeG + hScore;
+                    pq.push({fScore, v});
+                }
+            }
+        }
+    }
+    
+    if (gScore[endId] == INF) return result;
+    
+    result.found = true;
+    result.totalDistance = gScore[endId];
     
     int current = endId;
     while (current != -1) {
